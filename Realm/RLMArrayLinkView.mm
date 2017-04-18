@@ -31,6 +31,7 @@
 
 #import "list.hpp"
 #import "results.hpp"
+#import "shared_realm.hpp"
 
 #import <realm/table_view.hpp>
 #import <objc/runtime.h>
@@ -438,16 +439,12 @@ static void RLMInsertObject(RLMArrayLinkView *ar, RLMObject *object, NSUInteger 
 - (NSUInteger)indexOfObjectWithPredicate:(NSPredicate *)predicate {
     auto query = translateErrors([&] { return _backingList.get_query(); });
     query.and_query(RLMPredicateToQuery(predicate, _objectInfo->rlmObjectSchema, _realm.schema, _realm.group));
-#if REALM_VER_MAJOR >= 2
     auto indexInTable = query.find();
     if (indexInTable == realm::not_found) {
         return NSNotFound;
     }
     auto row = query.get_table()->get(indexInTable);
     return _backingList.find(row);
-#else
-    return RLMConvertNotFound(query.find());
-#endif
 }
 
 - (NSArray *)objectsAtIndexes:(__unused NSIndexSet *)indexes {
@@ -487,7 +484,7 @@ static void RLMInsertObject(RLMArrayLinkView *ar, RLMObject *object, NSUInteger 
 #pragma mark - Thread Confined Protocol Conformance
 
 - (std::unique_ptr<realm::ThreadSafeReferenceBase>)makeThreadSafeReference {
-    realm::ThreadSafeReference<realm::List> list_reference = _realm->_realm->obtain_thread_safe_reference(_backingList);
+    auto list_reference = _realm->_realm->obtain_thread_safe_reference(_backingList);
     return std::make_unique<realm::ThreadSafeReference<realm::List>>(std::move(list_reference));
 }
 
@@ -504,7 +501,7 @@ static void RLMInsertObject(RLMArrayLinkView *ar, RLMObject *object, NSUInteger 
     REALM_ASSERT_DEBUG(dynamic_cast<realm::ThreadSafeReference<realm::List> *>(reference.get()));
     auto list_reference = static_cast<realm::ThreadSafeReference<realm::List> *>(reference.get());
 
-    realm::List list = realm->_realm->resolve_thread_safe_reference(std::move(*list_reference));
+    auto list = realm->_realm->resolve_thread_safe_reference(std::move(*list_reference));
     if (!list.is_valid()) {
         return nil;
     }

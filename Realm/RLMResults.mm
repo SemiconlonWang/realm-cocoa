@@ -32,6 +32,7 @@
 #import "RLMUtil.hpp"
 
 #import "results.hpp"
+#import "shared_realm.hpp"
 
 #import <objc/runtime.h>
 #import <objc/message.h>
